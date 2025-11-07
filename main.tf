@@ -1,6 +1,6 @@
 locals {
   zone-a = "${var.region_a}-b"
-  zone-b = "${var.region_b}-c"
+  zone-b = "${var.region_b}-c" 
 }
 
 provider "google" {
@@ -136,6 +136,7 @@ resource "google_iam_workload_identity_pool_namespace" "sg" {
   workload_identity_pool_namespace_id = "${random_id.id.hex}-ns"
 }
 
+
 resource "google_iam_workload_identity_pool_managed_identity" "sg" {
   provider = google-beta
 
@@ -145,6 +146,11 @@ resource "google_iam_workload_identity_pool_managed_identity" "sg" {
    attestation_rules {
     google_cloud_resource = "//compute.googleapis.com/projects/${data.google_project.producer.number}/type/BackendService/*"
   }
+# Attestation for SIEGE host to receive SPIFFE  
+   attestation_rules {
+    google_cloud_resource = "//compute.googleapis.com/projects/${data.google_project.producer.number}/type/Instance/attached_service_account.email/${google_service_account.siege_sa.email}" 
+ } 
+
 }
 
 resource "google_privateca_ca_pool_iam_member" "sg_cert_requester" {
@@ -205,158 +211,158 @@ EOT
 
 # ####### VPC NETWORK
 
-# resource "google_compute_network" "producer_vpc_network" {
-#   name                    = "${random_id.id.hex}-vpc"
-#   auto_create_subnetworks = false
-#   mtu                     = 1460
-#   project                 = data.google_project.producer.project_id
-# }
+resource "google_compute_network" "producer_vpc_network" {
+  name                    = "${random_id.id.hex}-vpc"
+  auto_create_subnetworks = false
+  mtu                     = 1460
+  project                 = data.google_project.producer.project_id
+}
 
 
-# ####### VPC SUBNETS
+####### VPC SUBNETS
 
-# resource "google_compute_subnetwork" "producer_sb_subnet_a" {
-#   name          = "${random_id.id.hex}-subnet-a"
-#   project       = data.google_project.producer.project_id
-#   ip_cidr_range = "10.10.20.0/24"
-#   network       = google_compute_network.producer_vpc_network.id
-#   region        = var.region_a
-# }
+resource "google_compute_subnetwork" "producer_sb_subnet_a" {
+  name          = "${random_id.id.hex}-subnet-a"
+  project       = data.google_project.producer.project_id
+  ip_cidr_range = "10.10.20.0/24"
+  network       = google_compute_network.producer_vpc_network.id
+  region        = var.region_a
+}
 
-# resource "google_compute_subnetwork" "producer_sb_subnet_b" {
-#   name          = "${random_id.id.hex}-subnet-b"
-#   project       = data.google_project.producer.project_id
-#   ip_cidr_range = "10.10.40.0/24"
-#   network       = google_compute_network.producer_vpc_network.id
-#   region        = var.region_b
-# }
+resource "google_compute_subnetwork" "producer_sb_subnet_b" {
+  name          = "${random_id.id.hex}-subnet-b"
+  project       = data.google_project.producer.project_id
+  ip_cidr_range = "10.10.40.0/24"
+  network       = google_compute_network.producer_vpc_network.id
+  region        = var.region_b
+}
 
-# resource "google_compute_subnetwork" "producer_proxy" {
-#   name          = "${random_id.id.hex}-l7-proxy-subnet"
-#   project       = data.google_project.producer.project_id
-#   region        = var.region_a
-#   ip_cidr_range = "10.10.200.0/24"
-#   network       = google_compute_network.producer_vpc_network.id
-#   purpose       = "REGIONAL_MANAGED_PROXY"
-#   role          = "ACTIVE"
+resource "google_compute_subnetwork" "producer_proxy" {
+  name          = "${random_id.id.hex}-l7-proxy-subnet"
+  project       = data.google_project.producer.project_id
+  region        = var.region_a
+  ip_cidr_range = "10.10.200.0/24"
+  network       = google_compute_network.producer_vpc_network.id
+  purpose       = "REGIONAL_MANAGED_PROXY"
+  role          = "ACTIVE"
 
 
-# }
+}
 
-# ####### FIREWALL
+####### FIREWALL
 
-# resource "google_compute_firewall" "producer_fw-allow-internal" {
-#   name      = "${random_id.id.hex}-allow-internal"
-#   project   = data.google_project.producer.project_id
-#   network   = google_compute_network.producer_vpc_network.name
-#   direction = "INGRESS"
+resource "google_compute_firewall" "producer_fw-allow-internal" {
+  name      = "${random_id.id.hex}-allow-internal"
+  project   = data.google_project.producer.project_id
+  network   = google_compute_network.producer_vpc_network.name
+  direction = "INGRESS"
 
-#   allow {
-#     protocol = "tcp"
-#   }
-#   allow {
-#     protocol = "udp"
-#   }
-#   allow {
-#     protocol = "icmp"
-#   }
+  allow {
+    protocol = "tcp"
+  }
+  allow {
+    protocol = "udp"
+  }
+  allow {
+    protocol = "icmp"
+  }
 
-#   source_ranges = [
-#     google_compute_subnetwork.producer_sb_subnet_a.ip_cidr_range,
-#     google_compute_subnetwork.producer_sb_subnet_b.ip_cidr_range]
-# }
+  source_ranges = [
+    google_compute_subnetwork.producer_sb_subnet_a.ip_cidr_range,
+    google_compute_subnetwork.producer_sb_subnet_b.ip_cidr_range]
+}
 
-# resource "google_compute_firewall" "producer_fw_allow_ssh" {
-#   name      = "${random_id.id.hex}-allow-ssh"
-#   project   = data.google_project.producer.project_id
-#   network   = google_compute_network.producer_vpc_network.name
-#   direction = "INGRESS"
+resource "google_compute_firewall" "producer_fw_allow_ssh" {
+  name      = "${random_id.id.hex}-allow-ssh"
+  project   = data.google_project.producer.project_id
+  network   = google_compute_network.producer_vpc_network.name
+  direction = "INGRESS"
 
-#   allow {
-#     protocol = "tcp"
-#     ports    = ["22"]
-#   }
-#   source_ranges = ["0.0.0.0/0"]
-# }
+  allow {
+    protocol = "tcp"
+    ports    = ["22"]
+  }
+  source_ranges = ["0.0.0.0/0"]
+}
 
-# resource "google_compute_firewall" "producer_fw_app_allow_http" {
-#   name      = "${random_id.id.hex}-app-allow-http"
-#   project   = data.google_project.producer.project_id
-#   network   = google_compute_network.producer_vpc_network.name
-#   direction = "INGRESS"
+resource "google_compute_firewall" "producer_fw_app_allow_http" {
+  name      = "${random_id.id.hex}-app-allow-http"
+  project   = data.google_project.producer.project_id
+  network   = google_compute_network.producer_vpc_network.name
+  direction = "INGRESS"
 
-#   allow {
-#     protocol = "tcp"
-#     ports    = ["80", "8080", "443"]
-#   }
-#   target_tags   = ["lb-backend"]
-#   source_ranges = ["0.0.0.0/0"]
-# }
+  allow {
+    protocol = "tcp"
+    ports    = ["80", "8080", "443"]
+  }
+  target_tags   = ["lb-backend"]
+  source_ranges = ["0.0.0.0/0"]
+}
 
-# resource "google_compute_firewall" "producer_fw_app_allow_health_check" {
-#   name      = "${random_id.id.hex}-app-allow-health-check"
-#   project   = data.google_project.producer.project_id
-#   network   = google_compute_network.producer_vpc_network.name
-#   direction = "INGRESS"
+resource "google_compute_firewall" "producer_fw_app_allow_health_check" {
+  name      = "${random_id.id.hex}-app-allow-health-check"
+  project   = data.google_project.producer.project_id
+  network   = google_compute_network.producer_vpc_network.name
+  direction = "INGRESS"
 
-#   allow {
-#     protocol = "tcp"
-#   }
-#   target_tags   = ["lb-backend"]
-#   source_ranges = ["130.211.0.0/22", "35.191.0.0/16"]
-# }
+  allow {
+    protocol = "tcp"
+  }
+  target_tags   = ["lb-backend"]
+  source_ranges = ["130.211.0.0/22", "35.191.0.0/16"]
+}
 
-# #### NAT
+#### NAT
 
-# resource "google_compute_router" "producer_router_region_a" {
-#   name    = "${random_id.id.hex}-nat-rtr-region-a"
-#   project = data.google_project.producer.project_id
-#   network = google_compute_network.producer_vpc_network.id
-#   region  = var.region_a
+resource "google_compute_router" "producer_router_region_a" {
+  name    = "${random_id.id.hex}-nat-rtr-region-a"
+  project = data.google_project.producer.project_id
+  network = google_compute_network.producer_vpc_network.id
+  region  = var.region_a
 
-#   bgp {
-#     asn = 64514
-#   }
-# }
+  bgp {
+    asn = 64514
+  }
+}
 
-# resource "google_compute_router_nat" "producer_nat_region_a" {
-#   name                               = "${random_id.id.hex}-rtr-nat-region-a"
-#   project                            = data.google_project.producer.project_id
-#   router                             = google_compute_router.producer_router_region_a.name
-#   nat_ip_allocate_option             = "AUTO_ONLY"
-#   source_subnetwork_ip_ranges_to_nat = "ALL_SUBNETWORKS_ALL_IP_RANGES"
-#   region                             = var.region_a
+resource "google_compute_router_nat" "producer_nat_region_a" {
+  name                               = "${random_id.id.hex}-rtr-nat-region-a"
+  project                            = data.google_project.producer.project_id
+  router                             = google_compute_router.producer_router_region_a.name
+  nat_ip_allocate_option             = "AUTO_ONLY"
+  source_subnetwork_ip_ranges_to_nat = "ALL_SUBNETWORKS_ALL_IP_RANGES"
+  region                             = var.region_a
 
-#   log_config {
-#     enable = true
-#     filter = "ERRORS_ONLY"
-#   }
-# }
+  log_config {
+    enable = true
+    filter = "ERRORS_ONLY"
+  }
+}
 
-# resource "google_compute_router" "producer_router_region_b" {
-#   name    = "${random_id.id.hex}-nat-rtr-region-b"
-#   project = data.google_project.producer.project_id
-#   network = google_compute_network.producer_vpc_network.id
-#   region  = var.region_b
+resource "google_compute_router" "producer_router_region_b" {
+  name    = "${random_id.id.hex}-nat-rtr-region-b"
+  project = data.google_project.producer.project_id
+  network = google_compute_network.producer_vpc_network.id
+  region  = var.region_b
 
-#   bgp {
-#     asn = 64514
-#   }
-# }
+  bgp {
+    asn = 64514
+  }
+}
 
-# resource "google_compute_router_nat" "producer_nat_region_b" {
-#   name                               = "${random_id.id.hex}-rtr-nat-region-b"
-#   project                            = data.google_project.producer.project_id
-#   router                             = google_compute_router.producer_router_region_b.name
-#   nat_ip_allocate_option             = "AUTO_ONLY"
-#   source_subnetwork_ip_ranges_to_nat = "ALL_SUBNETWORKS_ALL_IP_RANGES"
-#   region                             = var.region_b
+resource "google_compute_router_nat" "producer_nat_region_b" {
+  name                               = "${random_id.id.hex}-rtr-nat-region-b"
+  project                            = data.google_project.producer.project_id
+  router                             = google_compute_router.producer_router_region_b.name
+  nat_ip_allocate_option             = "AUTO_ONLY"
+  source_subnetwork_ip_ranges_to_nat = "ALL_SUBNETWORKS_ALL_IP_RANGES"
+  region                             = var.region_b
 
-#   log_config {
-#     enable = true
-#     filter = "ERRORS_ONLY"
-#   }
-# }
+  log_config {
+    enable = true
+    filter = "ERRORS_ONLY"
+  }
+}
 
 
 
@@ -640,57 +646,105 @@ resource "google_compute_health_check" "tcp_health_check" {
 
 
 
-# ############### SIEGE HOST #####################
+############### SIEGE HOST #####################
 
-# # Instance to host siege (testing tool for LB)
-# # usage: siege -i --concurrent=50 http://<lb-ip>
-# #
-
-# resource "google_compute_instance" "siege_host_region_a" {
-#   name         = "${random_id.id.hex}-siege-reg-a"
-#   machine_type = "e2-medium"
-#   zone         = local.zone-a
-#   project      = data.google_project.producer.project_id
-
-#   tags = ["siege"]
-
-#   boot_disk {
-#     initialize_params {
-#       image = "debian-cloud/debian-11"
-#     }
-#   }
-
-#   network_interface {
-#     network    = google_compute_network.producer_vpc_network.name
-#     subnetwork = google_compute_subnetwork.producer_sb_subnet_a.self_link
-#   }
-
-#   scheduling {
-#     preemptible       = true
-#     automatic_restart = false
-#   }
-
-#   shielded_instance_config {
-#     enable_integrity_monitoring = true
-#     enable_secure_boot          = true
-#     enable_vtpm                 = true
-#   }
-
-#   metadata = {
-#     enable-oslogin = true
-#   }
+# Instance to host siege (testing tool for LB)
+# usage: siege -i --concurrent=50 http://<lb-ip>
+#
 
 
-#   metadata_startup_script = <<-EOF1
-#       #! /bin/bash
-#       set -euo pipefail
+resource "google_service_account" "siege_sa" {
+  account_id = "${random_id.id.hex}-siege-sa"
+}
 
-#       export DEBIAN_FRONTEND=noninteractive
-#       apt-get update
-#       apt-get install -y siege
-#      EOF1
+resource "google_compute_instance" "siege_host_region_a" {
+  provider = google-beta
+  name         = "${random_id.id.hex}-siege-reg-a"
+  machine_type = "e2-medium"
+  zone         = local.zone-a
+  project      = data.google_project.producer.project_id
 
-# }
+  allow_stopping_for_update = true
+
+  tags = ["siege"]
+
+  boot_disk {
+    initialize_params {
+      image = "debian-cloud/debian-11"
+    }
+  }
+
+  network_interface {
+    network    = google_compute_network.producer_vpc_network.name
+    subnetwork = google_compute_subnetwork.producer_sb_subnet_a.self_link
+  }
+  service_account {
+    email  = google_service_account.siege_sa.email
+    scopes = ["cloud-platform"]
+  }
+
+  scheduling {
+    preemptible       = true
+    automatic_restart = false
+  }
+
+  shielded_instance_config {
+    enable_integrity_monitoring = true
+    enable_secure_boot          = true
+    enable_vtpm                 = true
+  }
+
+  metadata = {
+    enable-oslogin = true
+    enable-workload-certificate = true
+  }
+
+  partner_metadata = {
+    "wc.compute.googleapis.com" = jsonencode({
+     entries = {
+        certificate-issuance-config = {
+          primary_certificate_authority_config = {
+              certificate_authority_config = {
+                 ca_pool = "${google_privateca_ca_pool.producer_ca_pool.id}"
+              }
+           },
+           key_algorithm = "ecdsa-p256"
+        },
+        trust-config = {
+           "${google_iam_workload_identity_pool.sg.workload_identity_pool_id}.global.${data.google_project.producer.number}.workload.id.goog" = {
+               trust_anchors = [{
+                  ca_pool = "${google_privateca_ca_pool.producer_ca_pool.id}"
+                }]
+           }
+     }
+  }}),
+
+    "iam.googleapis.com" = jsonencode({
+      entries = {
+         workload-identity = "spiffe://${google_iam_workload_identity_pool.sg.workload_identity_pool_id}.global.${data.google_project.producer.number}.workload.id.goog/ns/${google_iam_workload_identity_pool_managed_identity.sg.workload_identity_pool_namespace_id}/sa/${google_iam_workload_identity_pool_managed_identity.sg.workload_identity_pool_managed_identity_id}"
+     }
+    })
+
+  }
+
+  #
+  # gcloud beta compute instances  describe sg-0aab406a-siege-reg-a --zone=europe-west1-b --format="yaml(partnerMetadata)" --view=full
+  #
+  #
+  #
+
+
+
+  metadata_startup_script = <<-EOF1
+      #! /bin/bash
+      set -euo pipefail
+
+      export DEBIAN_FRONTEND=noninteractive
+      apt-get update
+      apt-get install -y siege
+     EOF1
+
+}
 
 
 # resource "google_compute_instance" "siege_host_region_b" {
