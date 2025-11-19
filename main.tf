@@ -397,6 +397,7 @@ resource "google_service_account" "ig_1_sa" {
 
 // ------------- Instance Group A
 resource "google_compute_instance_template" "tmpl_instance_group_1" {
+  provider = google-beta
   name                 = "${random_id.id.hex}-ig-1"
   project              = data.google_project.producer.project_id
   description          = "SG instance group of non-preemptible hosts"
@@ -443,6 +444,33 @@ resource "google_compute_instance_template" "tmpl_instance_group_1" {
     startup-script-url = "https://raw.githubusercontent.com/astianseb/sg-helper-scripts/refs/heads/main/startup.sh"
 #    startup-script-url = "gs://cloud-training/gcpnet/ilb/startup.sh"
   }
+
+  partner_metadata = {
+    "wc.compute.googleapis.com" = jsonencode({
+     entries = {
+        certificate-issuance-config = {
+          primary_certificate_authority_config = {
+              certificate_authority_config = {
+                 ca_pool = "${google_privateca_ca_pool.producer_ca_pool.id}"
+              }
+           },
+           key_algorithm = "ecdsa-p256"
+        },
+        trust-config = {
+           "${google_iam_workload_identity_pool.sg.workload_identity_pool_id}.global.${data.google_project.producer.number}.workload.id.goog" = {
+               trust_anchors = [{
+                  ca_pool = "${google_privateca_ca_pool.producer_ca_pool.id}"
+                }]
+           }
+     }
+  }}),
+
+    "iam.googleapis.com" = jsonencode({
+      entries = {
+         workload-identity = "spiffe://${google_iam_workload_identity_pool.sg.workload_identity_pool_id}.global.${data.google_project.producer.number}.workload.id.goog/ns/${google_iam_workload_identity_pool_managed_identity.sg.workload_identity_pool_namespace_id}/sa/${google_iam_workload_identity_pool_managed_identity.sg.workload_identity_pool_managed_identity_id}"
+     }
+    })
+}
 }
 
 #MIG-a
@@ -578,7 +606,8 @@ gcloud beta compute backend-services add-backend ${self.triggers.backend_service
   --instance-group-zone=${local.zone-a} \
   --balancing-mode=UTILIZATION \
   --max-utilization=0.8 \
-  --capacity-scaler=1.0 
+  --capacity-scaler=1.0 \
+  --global
 
 EOT
   }
