@@ -158,8 +158,8 @@ resource "google_privateca_ca_pool_iam_member" "sg_cert_requester" {
   location = var.region_a
   project  = data.google_project.producer.project_id
   role     = "roles/privateca.workloadCertificateRequester"
-#Looks like a bug in API as /name/ seems to be a glitch
-  member   = "principal://iam.googleapis.com/projects/${data.google_project.producer.number}/name/locations/global/workloadIdentityPools/${google_iam_workload_identity_pool.sg.workload_identity_pool_id}"
+  member   = "principalSet://iam.googleapis.com/projects/${data.google_project.producer.number}/locations/global/workloadIdentityPools/${google_iam_workload_identity_pool.sg.workload_identity_pool_id}/*"
+
 }
 
 resource "google_privateca_ca_pool_iam_member" "sg_cert_reader" {
@@ -167,7 +167,8 @@ resource "google_privateca_ca_pool_iam_member" "sg_cert_reader" {
   location = var.region_a
   project  = data.google_project.producer.project_id
   role     = "roles/privateca.poolReader"
-  member   = "principal://iam.googleapis.com/projects/${data.google_project.producer.number}/name/locations/global/workloadIdentityPools/${google_iam_workload_identity_pool.sg.workload_identity_pool_id}"
+  member   = "principalSet://iam.googleapis.com/projects/${data.google_project.producer.number}/locations/global/workloadIdentityPools/${google_iam_workload_identity_pool.sg.workload_identity_pool_id}/*"
+
 }
 
 #
