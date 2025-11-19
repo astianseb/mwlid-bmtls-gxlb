@@ -441,9 +441,21 @@ resource "google_compute_instance_template" "tmpl_instance_group_1" {
   }
 
   metadata = {
-    startup-script-url = "https://raw.githubusercontent.com/astianseb/sg-helper-scripts/refs/heads/main/startup.sh"
-#    startup-script-url = "gs://cloud-training/gcpnet/ilb/startup.sh"
+    enable-oslogin = true
+    enable-workload-certificate = true
   }
+
+  metadata_startup_script = <<-EOF1
+      #! /bin/bash
+      set -euo pipefail
+
+      export DEBIAN_FRONTEND=noninteractive
+      apt-get update
+      wget https://raw.githubusercontent.com/astianseb/sg-helper-scripts/refs/heads/main/startup_mwlid.sh
+      chmod +x startup_mwlid.sh
+      ./startup_mwlid.sh
+
+     EOF1
 
   partner_metadata = {
     "wc.compute.googleapis.com" = jsonencode({
@@ -508,6 +520,8 @@ resource "google_compute_autoscaler" "obj_my_autoscaler_a" {
       target = 0.8
     }
   }
+depends_on = [ google_iam_workload_identity_pool_managed_identity.sg ]
+
 }
 
 
@@ -707,14 +721,6 @@ resource "google_compute_instance" "siege_host_region_a" {
 
   }
 
-  #
-  # gcloud beta compute instances  describe sg-0aab406a-siege-reg-a --zone=europe-west1-b --format="yaml(partnerMetadata)" --view=full
-  #
-  #
-  #
-
-
-
   metadata_startup_script = <<-EOF1
       #! /bin/bash
       set -euo pipefail
@@ -728,7 +734,8 @@ resource "google_compute_instance" "siege_host_region_a" {
 
      EOF1
 
-  
+depends_on = [ google_iam_workload_identity_pool_managed_identity.sg ]
+ 
 
 }
 
