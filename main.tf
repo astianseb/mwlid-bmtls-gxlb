@@ -609,7 +609,7 @@ gcloud beta compute backend-services create ${self.triggers.backend_service_name
   --project=${self.triggers.project_id} \
   --load-balancing-scheme=EXTERNAL_MANAGED \
   --protocol=HTTPS \
-  --port-name="my-port" \
+  --port-name="${random_id.id.hex}-https" \
   --health-checks=${google_compute_health_check.tcp_health_check.name} \
   --identity='//${google_iam_workload_identity_pool.sg.workload_identity_pool_id}.global.${data.google_project.producer.number}.workload.id.goog/ns/${google_iam_workload_identity_pool_managed_identity.sg.workload_identity_pool_namespace_id}/sa/${google_iam_workload_identity_pool_managed_identity.sg.workload_identity_pool_managed_identity_id}' \
   --global 
