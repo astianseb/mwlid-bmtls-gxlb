@@ -177,6 +177,24 @@ resource "google_privateca_ca_pool_iam_member" "sg_cert_reader" {
 
 }
 
+resource "google_privateca_ca_pool_iam_member" "sg_lb_cert_requester" {
+  ca_pool  = google_privateca_ca_pool.producer_ca_pool.id
+  location = var.region_a
+  project  = data.google_project.producer.project_id
+  role     = "roles/privateca.workloadCertificateRequester"
+  member   = "principal://iam.googleapis.com/projects/${data.google_project.producer.number}/name/locations/global/workloadIdentityPools/${google_iam_workload_identity_pool.sg.workload_identity_pool_id}"
+
+}
+
+resource "google_privateca_ca_pool_iam_member" "sg_lb_cert_reader" {
+  ca_pool  = google_privateca_ca_pool.producer_ca_pool.id
+  location = var.region_a
+  project  = data.google_project.producer.project_id
+  role     = "roles/privateca.poolReader"
+  member   = "principal://iam.googleapis.com/projects/${data.google_project.producer.number}/name/locations/global/workloadIdentityPools/${google_iam_workload_identity_pool.sg.workload_identity_pool_id}"
+
+}
+
 
 
 # ####### VPC NETWORK
